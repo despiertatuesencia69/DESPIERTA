@@ -1,0 +1,4 @@
+user_id,mensaje,respuesta,timestamp,contexto_score
+ejemplo_user_001,Hola,¡Hola! Bienvenido a Despierta Tu Esencia. ¿Cómo te sientes hoy?,2025-10-30T00:00:00.000Z,0.8
+ejemplo_user_002,Me siento triste,💙 Escucha: Te escucho con amor. ✨ Valida: Tus emociones son válidas. 🌟 Orienta: Respira y confía en la luz.,2025-10-30T01:00:00.000Z,0.3
+ejemplo_user_003,Quiero donar,¡Gracias por tu apoyo! Dona aquí: https://paypal.me/despiertatuesencia,2025-10-30T02:00:00.000Z,0.9
