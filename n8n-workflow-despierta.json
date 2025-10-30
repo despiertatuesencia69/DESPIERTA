@@ -1,0 +1,289 @@
+{
+  "name": "Despierta WhatsApp IA Espiritual",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "whatsapp-webhook",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook WhatsApp",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "despierta-whatsapp"
+    },
+    {
+      "parameters": {
+        "url": "={{$env.BACKEND_URL}}/webhook/whatsapp",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": []
+        },
+        "options": {},
+        "requestMethod": "POST",
+        "jsonParameters": true,
+        "bodyParametersJson": "={{ $json }}"
+      },
+      "id": "http-backend",
+      "name": "Llamar Backend Express",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.body.message.text}}",
+              "operation": "contains",
+              "value2": "donar"
+            }
+          ]
+        }
+      },
+      "id": "if-donacion",
+      "name": "¿Es donación?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Loop emocional: Escucha → Valida → Orienta\nconst userMessage = items[0].json.body.message.text || '';\nconst userId = items[0].json.body.from || 'unknown';\n\nconst loopSteps = [\n  '💙 Escucha: Te escucho con amor.',\n  '✨ Valida: Tus emociones son completamente válidas.',\n  '🌟 Orienta: Respira profundo. Confía en la luz que hay en ti.'\n];\n\nconst respuesta = loopSteps.join('\\n\\n');\n\nreturn [{\n  json: {\n    userId: userId,\n    userMessage: userMessage,\n    respuesta: respuesta,\n    nivel: 2,\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "code-loop-emocional",
+      "name": "Loop Emocional (Nivel 2)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [850, 200]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Donación: Añadir link de PayPal\nconst userMessage = items[0].json.body.message.text || '';\nconst userId = items[0].json.body.from || 'unknown';\n\nconst respuesta = `🙏 ¡Gracias por tu intención de apoyar!\n\n💝 Tu donación nos ayuda a seguir compartiendo luz.\n\n👉 Dona aquí: ${process.env.PAYPAL_LINK || 'https://paypal.me/despiertatuesencia'}\n\n✨ Cada aporte es un acto de amor.`;\n\nreturn [{\n  json: {\n    userId: userId,\n    userMessage: userMessage,\n    respuesta: respuesta,\n    nivel: 3,\n    timestamp: new Date().toISOString(),\n    esDonacion: true\n  }\n}];"
+      },
+      "id": "code-donacion",
+      "name": "Mensaje Donación (Nivel 3)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [850, 400]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "application": "appelvXvY8ZB7hn3s",
+        "table": "Donaciones",
+        "options": {},
+        "fields": {
+          "mappings": [
+            {
+              "fieldId": "user_id",
+              "fieldValue": "={{$json.userId}}"
+            },
+            {
+              "fieldId": "fecha",
+              "fieldValue": "={{$json.timestamp}}"
+            }
+          ]
+        }
+      },
+      "id": "airtable-donacion",
+      "name": "Guardar Donación Airtable",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 1,
+      "position": [1050, 400],
+      "credentials": {
+        "airtableApi": {
+          "id": "1",
+          "name": "Airtable API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{$env.EVOLUTION_URL}}/message/sendText/{{$env.EVOLUTION_INSTANCE}}/{{$json.userId}}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$env.EVOLUTION_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "requestMethod": "POST",
+        "jsonParameters": true,
+        "bodyParametersJson": "={{ {\"number\": $json.userId, \"text\": $json.respuesta} }}"
+      },
+      "id": "http-whatsapp",
+      "name": "Enviar por WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {\"status\": \"ok\", \"message\": \"Procesado por n8n\"} }}"
+      },
+      "id": "respond-webhook",
+      "name": "Responder Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1450, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.body.message.text}}",
+              "operation": "contains",
+              "value2": "triste"
+            },
+            {
+              "value1": "={{$json.body.message.text}}",
+              "operation": "contains",
+              "value2": "emocion"
+            },
+            {
+              "value1": "={{$json.body.message.text}}",
+              "operation": "contains",
+              "value2": "deprim"
+            }
+          ]
+        },
+        "combineOperation": "any"
+      },
+      "id": "if-emocional",
+      "name": "¿Es emocional?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [650, 150]
+    }
+  ],
+  "connections": {
+    "Webhook WhatsApp": {
+      "main": [
+        [
+          {
+            "node": "Llamar Backend Express",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Llamar Backend Express": {
+      "main": [
+        [
+          {
+            "node": "¿Es emocional?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "¿Es donación?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Es emocional?": {
+      "main": [
+        [
+          {
+            "node": "Loop Emocional (Nivel 2)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Es donación?": {
+      "main": [
+        [
+          {
+            "node": "Mensaje Donación (Nivel 3)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Emocional (Nivel 2)": {
+      "main": [
+        [
+          {
+            "node": "Enviar por WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mensaje Donación (Nivel 3)": {
+      "main": [
+        [
+          {
+            "node": "Guardar Donación Airtable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar Donación Airtable": {
+      "main": [
+        [
+          {
+            "node": "Enviar por WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar por WhatsApp": {
+      "main": [
+        [
+          {
+            "node": "Responder Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2025-10-30T00:00:00.000Z",
+  "versionId": "1"
+}

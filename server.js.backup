@@ -1,0 +1,172 @@
+require('dotenv').config();
+const express = require('express');
+const axios = require('axios');
+const AirtableLib = require('airtable');
+
+const app = express();
+app.use(express.json());
+
+// Configure Airtable safely
+let AirtableBase = null;
+if (process.env.AIRTABLE_KEY && process.env.AIRTABLE_BASE_ID) {
+  AirtableLib.configure({ apiKey: process.env.AIRTABLE_KEY });
+  AirtableBase = AirtableLib.base(process.env.AIRTABLE_BASE_ID);
+}
+
+// Utility: wait (anti-bloqueos)
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Health check
+app.get('/', (req, res) => res.json({ status: 'Despierta IA Espiritual - Activa' }));
+
+// Webhook WhatsApp
+app.post('/webhook/whatsapp', async (req, res) => {
+  const body = req.body || {};
+  const userMessage = (body.message && (body.message.text || body.message.body)) ? (body.message.text || body.message.body).toString().trim() : '';
+  const userId = body.from || body.from_number || (body.sender && body.sender.id) || 'unknown_user';
+
+  // Obtener contexto (últimos mensajes)
+  const context = await getContext(userId);
+
+  // Determinar nivel de chat
+  const textLower = userMessage.toLowerCase();
+  const chatLevel = textLower.includes('donar') || textLower.includes('donación') ? 3 :
+                    (textLower.includes('emocion') || textLower.includes('triste') || textLower.includes('depres')) ? 2 : 1;
+
+  // Prompt base
+  let prompt = `Eres guía espiritual. Contexto: ${context || 'sin contexto'}. Mensaje: ${userMessage}. `;
+  if (chatLevel === 1) prompt += 'Responde corto y claro.';
+  if (chatLevel === 2) prompt += 'Loop emocional: 1. Escucha. 2. Valida. 3. Orienta.';
+  if (chatLevel === 3) prompt += 'Sugerir donación con PayPal.';
+
+  // IA Principal (Hugging Face) con fallback
+  let respuesta = '';
+  try {
+    if (!process.env.HF_TOKEN) throw new Error('HF token missing');
+    const hfUrl = (process.env.HF_MODEL_URL || 'https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.1');
+    const hfRes = await axios.post(hfUrl, { inputs: prompt }, { headers: { Authorization: `Bearer ${process.env.HF_TOKEN}` }, timeout: 20000 });
+    // Hugging Face inference can return different shapes; try common ones
+    if (hfRes.data && typeof hfRes.data === 'string') respuesta = hfRes.data;
+    else if (Array.isArray(hfRes.data) && hfRes.data[0] && hfRes.data[0].generated_text) respuesta = hfRes.data[0].generated_text;
+    else if (hfRes.data && hfRes.data.generated_text) respuesta = hfRes.data.generated_text;
+    else respuesta = JSON.stringify(hfRes.data).slice(0, 1600);
+  } catch (e) {
+    // Fallback: ChatLLM (Abacus.AI) if configured
+    try {
+      if (!process.env.CHATLLM_KEY) throw new Error('CHATLLM key missing');
+      const cl = await axios.post('https://chatllm.abacus.ai/v1/chat/completions', {
+        model: 'deepagent-espiritual',
+        messages: [{ role: 'user', content: prompt }]
+      }, { headers: { Authorization: `Bearer ${process.env.CHATLLM_KEY}` }, timeout: 20000 });
+      respuesta = cl.data && cl.data.choices && cl.data.choices[0] && cl.data.choices[0].message && cl.data.choices[0].message.content
+        ? cl.data.choices[0].message.content
+        : JSON.stringify(cl.data).slice(0, 1600);
+    } catch (err) {
+      // Final fallback
+      respuesta = 'Gracias por compartir. Estoy aquí para escucharte. (respuesta por fallback)';
+    }
+  }
+
+  // Loop emocional (Level 2) - simple deterministic steps
+  if (chatLevel === 2) {
+    const steps = ['Escucha: Te escucho con amor.', 'Valida: Tus emociones son válidas.', 'Orienta: Respira y confía en la luz.'];
+    respuesta = steps.join('\n');
+  }
+
+  // Donación (Level 3)
+  if (chatLevel === 3) {
+    respuesta += `\n\n¡Gracias por tu apoyo! Dona aquí: ${process.env.PAYPAL_LINK || 'https://paypal.me/tu_cuenta'}`;
+    try {
+      if (AirtableBase) await AirtableBase('Donaciones').create([{ fields: { user_id: userId, fecha: new Date().toISOString() } }]);
+    } catch (e) { console.warn('Airtable save donation failed:', e.message); }
+  }
+
+  // Análisis sentimiento (simple wrapper to HF sentiment model)
+  let sentimentScore = 0.5;
+  try {
+    sentimentScore = await analyzeSentiment(userMessage);
+  } catch (e) {
+    console.warn('Sentiment analysis failed:', e.message);
+  }
+
+  // Notificación por Telegram en caso de sentimiento negativo
+  try {
+    if (sentimentScore < 0.3 && process.env.TELEGRAM_TOKEN && process.env.TELEGRAM_CHAT_ID) {
+      await axios.post(`https://api.telegram.org/bot${process.env.TELEGRAM_TOKEN}/sendMessage`, {
+        chat_id: process.env.TELEGRAM_CHAT_ID,
+        text: `Alerta: Sentimiento negativo de ${userId}: "${userMessage}" (score=${sentimentScore})`
+      });
+    }
+  } catch (e) { console.warn('Telegram notify failed:', e.message); }
+
+  // Guardar conversación en Airtable
+  try {
+    if (AirtableBase) {
+      await AirtableBase('Conversaciones').create([{ fields: {
+        user_id: userId,
+        mensaje: userMessage,
+        respuesta: respuesta,
+        timestamp: new Date().toISOString(),
+        contexto_score: sentimentScore
+      } }]);
+    }
+  } catch (e) { console.warn('Airtable save conversation failed:', e.message); }
+
+  // Espera anti-bloqueo
+  await wait(1000);
+
+  // Responder vía Evolution API si está configurada
+  try {
+    if (process.env.EVOLUTION_URL && process.env.EVOLUTION_KEY && process.env.EVOLUTION_INSTANCE) {
+      await axios.post(`${process.env.EVOLUTION_URL}/message/sendText/${process.env.EVOLUTION_INSTANCE}/${userId}`, {
+        body: respuesta
+      }, { headers: { apikey: process.env.EVOLUTION_KEY }, timeout: 15000 });
+    }
+  } catch (e) { console.warn('Evolution send failed:', e.message); }
+
+  // Return success to webhook caller
+  return res.json({ status: 'ok', user: userId, level: chatLevel });
+});
+
+// Obtener contexto desde Airtable
+async function getContext(userId) {
+  try {
+    if (!AirtableBase) return '';
+    const records = await AirtableBase('Conversaciones').select({
+      filterByFormula: `{user_id} = '${userId}'`,
+      maxRecords: 10,
+      sort: [{ field: 'timestamp', direction: 'desc' }]
+    }).firstPage();
+    return records.map(r => r.fields.mensaje).reverse().join(' → ');
+  } catch (e) {
+    console.warn('getContext failed:', e.message);
+    return '';
+  }
+}
+
+// Analizar sentimiento (HF simple wrapper) -> devuelve score 0..1 (1 = positivo)
+async function analyzeSentiment(text) {
+  if (!text || text.trim().length === 0) return 0.5;
+  if (!process.env.HF_TOKEN) return 0.5;
+  try {
+    const modelUrl = 'https://api-inference.huggingface.co/models/distilbert-base-uncased-finetuned-sst-2-english';
+    const res = await axios.post(modelUrl, { inputs: text }, { headers: { Authorization: `Bearer ${process.env.HF_TOKEN}` }, timeout: 15000 });
+    // Try to parse various shapes
+    if (Array.isArray(res.data) && res.data[0] && res.data[0].label) {
+      const item = res.data[0];
+      if (item.label.toUpperCase().includes('POS')) return item.score || 0.5;
+      return 1 - (item.score || 0.5);
+    }
+    if (res.data && res.data[0] && res.data[0].label) {
+      const item = res.data[0];
+      if (item.label.toUpperCase().includes('POS')) return item.score || 0.5;
+      return 1 - (item.score || 0.5);
+    }
+  } catch (e) {
+    console.warn('HF sentiment failed:', e.message);
+  }
+  return 0.5;
+}
+
+const PORT = parseInt(process.env.PORT, 10) || 3000;
+app.listen(PORT, () => console.log(`Servidor activo en puerto ${PORT}`));
