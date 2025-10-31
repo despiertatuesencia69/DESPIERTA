@@ -25,8 +25,9 @@
 - ✅ `CHECKLIST_COMPLETO.md` - paso a paso detallado
 - ✅ Este archivo con resumen final
 
-### Integración n8n
-- ✅ `n8n-workflow-despierta.json` - workflow completo exportable
+
+### Orquestación Activepieces Cloud
+- ✅ Flujo configurable en https://cloud.activepieces.com/
 - ✅ Lógica de niveles (básico/emocional/donación)
 - ✅ Guardado en Airtable automático
 - ✅ Envío por WhatsApp via Evolution API
@@ -145,24 +146,16 @@
 
 ---
 
-### 6. Importar Workflow n8n (5 minutos) 🔗
-**Por qué es necesario:** Para orquestar el flujo completo WhatsApp → Backend → IA.
+
+### 6. Configurar flujo en Activepieces Cloud (5 minutos) 🔗
+**Por qué es necesario:** Para orquestar el flujo completo WhatsApp → Backend → IA sin costo.
 
 **Cómo hacerlo:**
-1. Ve a tu instancia n8n (o crea una en https://n8n.io)
-2. Import Workflow
-3. Selecciona: `n8n-workflow-despierta.json`
-4. Configura credenciales:
-   - **Airtable:** Personal Access Token
-   - **HTTP Headers:** apikey con tu Evolution Key
-5. Edita variables de entorno en n8n:
-   - `BACKEND_URL`: URL de tu backend en Railway
-   - `EVOLUTION_URL`: URL de Evolution API
-   - `EVOLUTION_KEY`: API Key de Evolution
-   - `PAYPAL_LINK`: https://paypal.me/despiertatuesencia
-6. Activa el workflow
-7. Copia la URL del webhook (ej: `https://tu-n8n.app/webhook/whatsapp-webhook`)
-8. Configura ese webhook en Evolution API
+1. Ve a https://cloud.activepieces.com/
+2. Crea un flujo (flow) con trigger Webhook
+3. Copia la URL y configúrala en Evolution API
+4. Añade pasos para HTTP, Airtable, Telegram, etc.
+5. Activa el flujo y prueba
 
 **Estado:** ⏳ Pendiente
 
@@ -196,10 +189,11 @@ Invoke-RestMethod -Method Post -Uri http://localhost:3000/test/message `
 10. ✅ Deploy backend en Railway
 11. ✅ Configurar variables en Railway
 
-### Fase 5 - n8n (5 min)
-12. ✅ Importar workflow en n8n
-13. ✅ Configurar credenciales
-14. ✅ Conectar webhook Evolution → n8n
+
+### Fase 5 - Activepieces Cloud (5 min)
+12. ✅ Crear flujo en Activepieces
+13. ✅ Configurar pasos y credenciales
+14. ✅ Conectar webhook Evolution → Activepieces
 
 ### Fase 6 - Prueba Final (2 min)
 15. ✅ Enviar mensaje a tu WhatsApp

@@ -8,6 +8,7 @@
 - [x] Loops emocionales (nivel 1/2/3)
 - [x] Variables de entorno (.env creado)
 - [x] Deploy config (railway.json, Procfile)
+
 - [x] Documentación (README.md)
 
 ## 🟡 PENDIENTE - CRÍTICO (necesario para funcionar)
@@ -46,8 +47,12 @@ Crea estas 2 tablas exactamente así:
    - EVOLUTION_KEY=tu_api_key
 5. Escanea QR para conectar WhatsApp
 
-**Opción B - Usar n8n con WhatsApp Cloud API:**
-(instrucciones en archivo n8n-workflow-despierta.json)
+**Opción B - Usar Activepieces Cloud para orquestación:**
+1. Ve a https://cloud.activepieces.com/
+2. Crea un flujo (flow) con trigger Webhook
+3. Configura la URL del webhook en Evolution API
+4. Añade pasos para llamar a tu backend, guardar en Airtable, enviar alertas, etc.
+5. Usa los conectores HTTP, Airtable, Telegram, etc.
 
 ### 4. Token Hugging Face (IA principal)
 **Acción requerida:**
@@ -77,11 +82,13 @@ Crea estas 2 tablas exactamente así:
 4. En Variables, pega todo tu .env
 5. Deploy automático
 
-### 8. Configurar n8n workflow
-1. Importa el archivo `n8n-workflow-despierta.json` en n8n
-2. Configura credenciales en cada nodo
-3. Activa el workflow
-4. Copia la URL del webhook
+
+### 8. Configurar flujo en Activepieces Cloud
+1. Crea un flujo en https://cloud.activepieces.com/
+2. Usa trigger Webhook y copia la URL
+3. Configura la URL en Evolution API
+4. Añade pasos para HTTP, Airtable, Telegram, etc.
+5. Activa el flujo y prueba
 
 ## 📋 ORDEN RECOMENDADO DE EJECUCIÓN
 

@@ -11,7 +11,7 @@ Asistente espiritual inteligente para WhatsApp con IA, análisis emocional y mon
 - 📊 **Niveles de Chat**: Básico (1), Emocional (2), Donación (3)
 - 💾 **Persistencia**: Airtable para conversaciones, donaciones y aprendizaje
 - 📢 **Alertas**: Notificaciones Telegram para sentimientos negativos
-- 🔗 **Integración**: n8n, Evolution API, Railway
+- 🔗 **Integración**: Activepieces Cloud, Evolution API, Railway
 - 💰 **Monetización**: PayPal con sugerencia suave
 
 ## 🚀 Quickstart (5 minutos)
@@ -66,32 +66,32 @@ Ver archivo **[CHECKLIST_COMPLETO.md](CHECKLIST_COMPLETO.md)** para:
 - ✅ Configurar Telegram Bot
 - ✅ Conectar WhatsApp via Evolution API
 - ✅ Deploy en Railway
-- ✅ Integrar con n8n
+- ✅ Integrar con Activepieces Cloud
 
-## 🔗 Integración n8n
+## 🔗 Orquestación con Activepieces Cloud
 
-Importa el workflow listo:
-1. Abre n8n → Import Workflow
-2. Selecciona: `n8n-workflow-despierta.json`
-3. Configura credenciales:
-   - Airtable API
-   - Evolution API (headers con apikey)
-   - Variables: BACKEND_URL, EVOLUTION_URL, EVOLUTION_KEY
-4. Activa el workflow
-5. Usa la URL del webhook en Evolution API
+Ahora puedes usar [Activepieces Cloud](https://cloud.activepieces.com/) para automatizar y orquestar tu flujo de WhatsApp, IA y alertas sin costo.
 
-**Flujo del workflow:**
+**Pasos básicos:**
+1. Crea cuenta en https://cloud.activepieces.com/
+2. Crea un nuevo flujo (flow) y selecciona el trigger "Webhook".
+3. Copia la URL del webhook generado y configúralo en Evolution API como destino para mensajes entrantes.
+4. Añade pasos (pieces) para:
+   - Llamar a tu backend (`POST /webhook/whatsapp`)
+   - Procesar respuestas, guardar en Airtable, enviar alertas a Telegram, etc.
+5. Puedes usar HTTP, Airtable, Telegram y otros connectors nativos de Activepieces.
+6. Activa el flujo y prueba enviando mensajes desde WhatsApp.
+
+**Ejemplo de flujo:**
 ```
-WhatsApp → Evolution → n8n Webhook → Backend Express
+WhatsApp → Evolution API → Webhook (Activepieces) → Backend Express
     ↓
-Análisis IA + Nivel (1/2/3)
+Procesamiento IA, guardado en Airtable, alertas Telegram
     ↓
-Loop Emocional (si aplica) → Airtable
-    ↓
-Donación (si aplica) → Airtable + PayPal
-    ↓
-Respuesta → Evolution → WhatsApp
+Respuesta → Evolution API → WhatsApp
 ```
+
+Consulta la guía `GUIA_PASO_A_PASO.md` para detalles y ejemplos de payloads.
 
 ## 🛠️ Comandos Disponibles
 
@@ -108,15 +108,15 @@ npm run format     # Prettier
 ```
 DESPIERTA/
 ├── src/
-│   ├── services/      # IA, Airtable, WhatsApp, Telegram
-│   ├── config/        # Variables de entorno
-│   └── utils/         # Helpers
+|   ├── services/      # IA, Airtable, WhatsApp, Telegram
+|   ├── config/        # Variables de entorno
+|   └── utils/         # Helpers
 ├── tests/             # Tests unitarios
 ├── server.js          # Servidor Express principal
 ├── .env               # Credenciales (NO SUBIR)
 ├── railway.json       # Config Railway
 ├── Procfile           # Heroku/Railway
-└── n8n-workflow-despierta.json  # Workflow importable
+└── (opcional) workflows Activepieces (JSON)
 ```
 
 ## 🌐 Deploy en Railway
@@ -168,6 +168,7 @@ npm install
 **Problema:** No llegan mensajes de WhatsApp
 - Verifica webhook en Evolution API
 - Revisa logs: `railway logs` o consola local
+
 
 ## 📝 Variables de Entorno
 
